@@ -39,7 +39,7 @@ class GemmTester {
   class cuTimer {
     cudaEvent_t startEvent{}, stopEvent{};
 
-   public:
+  public:
     cuTimer() {
       cudaEventCreate(&startEvent);
       cudaEventCreate(&stopEvent);
@@ -65,13 +65,14 @@ class GemmTester {
   };
 
   cuTimer timer{};
-  const float *hostC;
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> hostC;
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+      deviceCCopied;
   const float *deviceAPtr, *deviceBPtr;
   float *deviceCPtr;
   const float *deviceCInitPtr;
   float alpha, beta;
   unsigned M, N, K;
-  float *deviceCOnHostPtr;
   int iteration;
 
   void tearUp() {
@@ -80,14 +81,10 @@ class GemmTester {
   }
 
   void checkValue() const {
-    Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, 1>> hostMatrixMapped{
-        hostC, M * N};
-    Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, 1>>
-        deviceMatrixMapped{deviceCOnHostPtr, M * N};
     Eigen::Matrix<float, Eigen::Dynamic, 1> absVector =
-        (hostMatrixMapped - deviceMatrixMapped).array().abs();
+        (hostC - deviceCCopied).array().abs();
     Eigen::Matrix<float, Eigen::Dynamic, 1> relativeVector =
-        absVector.cwiseProduct(hostMatrixMapped.cwiseAbs().cwiseInverse());
+        absVector.cwiseProduct(hostC.cwiseAbs().cwiseInverse());
     Eigen::Matrix<float, Eigen::Dynamic, 1>::Index maxAbsCoeff,
         maxRelativeCoeff;
     absVector.maxCoeff(&maxAbsCoeff);
@@ -111,66 +108,53 @@ class GemmTester {
            GFLOPS);
   }
 
- public:
+public:
   explicit GemmTester(float alpha, float beta, unsigned M, unsigned N,
                       unsigned K, int iteration)
-      : alpha(alpha),
+      : hostC{M, N},
+        deviceCCopied{M, N},
+        alpha(alpha),
         beta(beta),
         M(M),
         N(N),
         K(K),
-        deviceCOnHostPtr{new float[M * N]},
         iteration{iteration} {
-    auto hostA = new float[M * K];
-    auto hostB = new float[K * N];
-    auto _hostC = new float[M * N];
-    hostC = _hostC;
-    Eigen::Map<
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        A{hostA, M, K};
-    Eigen::Map<
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        B{hostB, K, N};
-    Eigen::Map<
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        C{_hostC, M, N};
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> A{M,
+                                                                            K};
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> B{K,
+                                                                            N};
     A.setRandom();
     B.setRandom();
-    C.setRandom();
+    hostC.setRandom();
 
     float *_deviceCPtr, *_deviceCInitPtr;
     cudaMalloc(&_deviceCPtr, M * N * sizeof(float));
     cudaMalloc(&_deviceCInitPtr, M * N * sizeof(float));
     deviceCPtr = _deviceCPtr;
     deviceCInitPtr = _deviceCInitPtr;
-    cudaMemcpy(_deviceCInitPtr, _hostC, M * N * sizeof(float),
+    cudaMemcpy(_deviceCInitPtr, hostC.data(), M * N * sizeof(float),
                cudaMemcpyHostToDevice);
     cudaDeviceSynchronize();
 
     clock_t begin, end;
     begin = clock();
-    C = alpha * (A * B) + beta * C;
+    hostC = alpha * (A * B) + beta * hostC;
     end = clock();
     printf("CPU use: %.3f ms\n", double(end - begin) / CLOCKS_PER_SEC * 1e3);
 
     float *_deviceAPtr, *_deviceBPtr;
     cudaMalloc(&_deviceAPtr, M * K * sizeof(float));
     cudaMalloc(&_deviceBPtr, K * N * sizeof(float));
-    cudaMemcpy(_deviceAPtr, hostA, M * K * sizeof(float),
+    cudaMemcpy(_deviceAPtr, A.data(), M * K * sizeof(float),
                cudaMemcpyHostToDevice);
-    cudaMemcpy(_deviceBPtr, hostB, K * N * sizeof(float),
+    cudaMemcpy(_deviceBPtr, B.data(), K * N * sizeof(float),
                cudaMemcpyHostToDevice);
     cudaDeviceSynchronize();
 
     deviceAPtr = _deviceAPtr;
     deviceBPtr = _deviceBPtr;
-
-    delete[] hostA;
-    delete[] hostB;
   }
   ~GemmTester() {
-    delete[] hostC;
-    delete[] deviceCOnHostPtr;
     cudaFree((void *)deviceAPtr);
     cudaFree((void *)deviceBPtr);
     cudaFree(deviceCPtr);
@@ -182,7 +166,7 @@ class GemmTester {
     printf("-----------------------------------\n");
     printf("Evaluating %s\n", name);
     gemmFunction(deviceAPtr, deviceBPtr, deviceCPtr, alpha, beta, M, N, K);
-    cudaMemcpy(deviceCOnHostPtr, deviceCPtr, M * N * sizeof(float),
+    cudaMemcpy(deviceCCopied.data(), deviceCPtr, M * N * sizeof(float),
                cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     checkValue();
@@ -194,7 +178,7 @@ class GemmTester {
 class gemmCuBlas {
   cublasHandle_t handle{nullptr};
 
- public:
+public:
   gemmCuBlas() { cublasCreate(&handle); }
   ~gemmCuBlas() { cublasDestroy(handle); }
 
@@ -210,41 +194,41 @@ int getSPcores(cudaDeviceProp devProp) {
   int cores = 0;
   int mp = devProp.multiProcessorCount;
   switch (devProp.major) {
-    case 2:  // Fermi
-      if (devProp.minor == 1)
-        cores = mp * 48;
-      else
-        cores = mp * 32;
-      break;
-    case 3:  // Kepler
-      cores = mp * 192;
-      break;
-    case 5:  // Maxwell
+  case 2:  // Fermi
+    if (devProp.minor == 1)
+      cores = mp * 48;
+    else
+      cores = mp * 32;
+    break;
+  case 3:  // Kepler
+    cores = mp * 192;
+    break;
+  case 5:  // Maxwell
+    cores = mp * 128;
+    break;
+  case 6:  // Pascal
+    if ((devProp.minor == 1) || (devProp.minor == 2))
       cores = mp * 128;
-      break;
-    case 6:  // Pascal
-      if ((devProp.minor == 1) || (devProp.minor == 2))
-        cores = mp * 128;
-      else if (devProp.minor == 0)
-        cores = mp * 64;
-      else
-        throw std::runtime_error("Unknown device type");
-      break;
-    case 7:  // Volta and Turing
-      if ((devProp.minor == 0) || (devProp.minor == 5))
-        cores = mp * 64;
-      else
-        throw std::runtime_error("Unknown device type");
-      break;
-    case 8:  // Ampere
-      if (devProp.minor == 0)
-        cores = mp * 64;
-      else if (devProp.minor == 6)
-        cores = mp * 128;
-      else
-        throw std::runtime_error("Unknown device type");
-    default:
+    else if (devProp.minor == 0)
+      cores = mp * 64;
+    else
       throw std::runtime_error("Unknown device type");
+    break;
+  case 7:  // Volta and Turing
+    if ((devProp.minor == 0) || (devProp.minor == 5))
+      cores = mp * 64;
+    else
+      throw std::runtime_error("Unknown device type");
+    break;
+  case 8:  // Ampere
+    if (devProp.minor == 0)
+      cores = mp * 64;
+    else if (devProp.minor == 6)
+      cores = mp * 128;
+    else
+      throw std::runtime_error("Unknown device type");
+  default:
+    throw std::runtime_error("Unknown device type");
   }
   return cores;
 }
