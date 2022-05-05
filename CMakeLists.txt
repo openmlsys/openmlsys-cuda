@@ -28,3 +28,6 @@ endif ()
 
 add_executable(gemm main.cu gemm_final.cu gemm_hide_smem_latency.cu gemm_transpose_smem.cu gemm_use_smem.cu gemm_use_tile.cu gemm_use_128.cu gemm_naive.cu)
 target_link_libraries(gemm ${CUDA_cublas_LIBRARY} OpenMP::OpenMP_CXX)
+
+add_executable(first_attempt first_attempt.cu)
+target_link_libraries(first_attempt OpenMP::OpenMP_CXX)
