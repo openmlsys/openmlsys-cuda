@@ -1,12 +1,14 @@
 #include <Eigen/Core>
+#include <ctime>
+#include <omp.h>
 
-__global__ void gemmKernel(const float * A,
-                           const float * B, float * C,
+__global__ void gemmKernel(const float *A, const float *B, float *C,
                            float alpha, float beta, unsigned M, unsigned N,
                            unsigned K) {
   unsigned int m = threadIdx.x + blockDim.x * blockIdx.x;
   unsigned int n = threadIdx.y + blockDim.y * blockIdx.y;
-  if (m >= M || n >= N) return;
+  if (m >= M || n >= N)
+    return;
   float c = 0;
   for (unsigned k = 0; k < K; ++k) {
     c += A[m * K + k] * B[k * N + n];
@@ -19,9 +21,8 @@ __global__ void gemmKernel(const float * A,
   C[m * N + n] = result;
 }
 
-void gemmNaive(const float *A, const float *B, float *C,
-               float alpha, float beta, unsigned M,
-               unsigned N, unsigned K) {
+void gemmNaive(const float *A, const float *B, float *C, float alpha,
+               float beta, unsigned M, unsigned N, unsigned K) {
   dim3 block(32, 32);
   dim3 grid((M - 1) / block.x + 1, (N - 1) / block.y + 1);
 
@@ -31,6 +32,7 @@ void gemmNaive(const float *A, const float *B, float *C,
 using namespace Eigen;
 
 int main() {
+  omp_set_num_threads(omp_get_num_procs());
   unsigned M = 1024, N = 1024, K = 1024;
   float alpha = 1., beta = 0.;
   float *deviceAPrt, *deviceBPtr, *deviceCPtr;
@@ -59,13 +61,18 @@ int main() {
   cudaEventSynchronize(stopEvent);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, startEvent, stopEvent);
-  printf("Elapsed Time: %.3f(ms)\n", milliseconds);
+  printf("GPU use: %.3f(ms)\n", milliseconds);
 
   cudaEventDestroy(stopEvent);
   cudaEventDestroy(startEvent);
 
-  Matrix<float, Dynamic, Dynamic, RowMajor> hostResult{M, N}, deviceResult{M, N};
+  Matrix<float, Dynamic, Dynamic, RowMajor> hostResult{M, N},
+      deviceResult{M, N};
+  clock_t begin, end;
+  begin = clock();
   hostResult = alpha * (A * B) + beta * C;
+  end = clock();
+  printf("CPU use: %.3f(ms)\n", double(end - begin) / CLOCKS_PER_SEC * 1e3);
   cudaMemcpy(deviceResult.data(), deviceCPtr, M * N * sizeof(float),
              cudaMemcpyDeviceToHost);
   cudaDeviceSynchronize();
