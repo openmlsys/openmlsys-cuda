@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <argparse/argparse.hpp>
 #include <ctime>
+#include <iostream>
 #include <utility>
 
 void gemmFinal(const float *deviceAPtr, const float *deviceBPtr,
@@ -81,13 +82,10 @@ class GemmTester {
   }
 
   void checkValue() const {
-    Eigen::Array<float, Eigen::Dynamic, 1> diffArray =
+    Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic> diffArray =
         (hostC - deviceCCopied).array().abs();
-    Eigen::Array<float, Eigen::Dynamic, 1> percentArray =
-        diffArray / hostC.array().abs();
 
-    printf("Max Abs Error: %f, Max Relative Error: %f\n", diffArray.maxCoeff(),
-           percentArray.maxCoeff());
+    printf("Max Error: %f\n", diffArray.maxCoeff());
   }
 
   template <typename Function> void profile(Function &&gemmFunction) {
@@ -258,6 +256,15 @@ int main(int argc, char *argv[]) {
     std::cerr << program;
     std::exit(1);
   }
+
+  Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic> a, b;
+  a.resize(3, 3);
+  b.resize(3, 3);
+  a.setRandom();
+  b.setRandom();
+  std::cout << "A/B:\n" << a / b.abs() << std::endl;
+  std::cout << "A:\n" << a << std::endl;
+  std::cout << "B:\n" << b << std::endl;
 
   const int cpu_procs = program.get<int>("--cpu_procs");
   const int gpu_rank = program.get<int>("--gpu_rank");
