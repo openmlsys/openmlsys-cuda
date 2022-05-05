@@ -81,20 +81,16 @@ class GemmTester {
   }
 
   void checkValue() const {
-    Eigen::Matrix<float, Eigen::Dynamic, 1> absVector =
+    Eigen::Array<float, Eigen::Dynamic, 1> diffArray =
         (hostC - deviceCCopied).array().abs();
-    Eigen::Matrix<float, Eigen::Dynamic, 1> relativeVector =
-        absVector.cwiseProduct(hostC.cwiseAbs().cwiseInverse());
-    Eigen::Matrix<float, Eigen::Dynamic, 1>::Index maxAbsCoeff,
-        maxRelativeCoeff;
-    absVector.maxCoeff(&maxAbsCoeff);
-    relativeVector.maxCoeff(&maxRelativeCoeff);
-    printf("Max Abs Error: %f, Max Relative Error: %f\n",
-           absVector(maxAbsCoeff), absVector(maxRelativeCoeff));
+    Eigen::Array<float, Eigen::Dynamic, 1> percentArray =
+        diffArray / hostC.array().abs();
+
+    printf("Max Abs Error: %f, Max Relative Error: %f\n", diffArray.maxCoeff(),
+           percentArray.maxCoeff());
   }
 
-  template <typename Function>
-  void profile(Function &&gemmFunction) {
+  template <typename Function> void profile(Function &&gemmFunction) {
     double elapsedTime = 0;
     for (int i = 0; i < iteration; ++i) {
       tearUp();
@@ -111,14 +107,8 @@ class GemmTester {
 public:
   explicit GemmTester(float alpha, float beta, unsigned M, unsigned N,
                       unsigned K, int iteration)
-      : hostC{M, N},
-        deviceCCopied{M, N},
-        alpha(alpha),
-        beta(beta),
-        M(M),
-        N(N),
-        K(K),
-        iteration{iteration} {
+      : hostC{M, N}, deviceCCopied{M, N}, alpha(alpha), beta(beta), M(M), N(N),
+        K(K), iteration{iteration} {
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> A{M,
                                                                             K};
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> B{K,
@@ -194,19 +184,19 @@ int getSPcores(cudaDeviceProp devProp) {
   int cores = 0;
   int mp = devProp.multiProcessorCount;
   switch (devProp.major) {
-  case 2:  // Fermi
+  case 2: // Fermi
     if (devProp.minor == 1)
       cores = mp * 48;
     else
       cores = mp * 32;
     break;
-  case 3:  // Kepler
+  case 3: // Kepler
     cores = mp * 192;
     break;
-  case 5:  // Maxwell
+  case 5: // Maxwell
     cores = mp * 128;
     break;
-  case 6:  // Pascal
+  case 6: // Pascal
     if ((devProp.minor == 1) || (devProp.minor == 2))
       cores = mp * 128;
     else if (devProp.minor == 0)
@@ -214,13 +204,13 @@ int getSPcores(cudaDeviceProp devProp) {
     else
       throw std::runtime_error("Unknown device type");
     break;
-  case 7:  // Volta and Turing
+  case 7: // Volta and Turing
     if ((devProp.minor == 0) || (devProp.minor == 5))
       cores = mp * 64;
     else
       throw std::runtime_error("Unknown device type");
     break;
-  case 8:  // Ampere
+  case 8: // Ampere
     if (devProp.minor == 0)
       cores = mp * 64;
     else if (devProp.minor == 6)
@@ -287,10 +277,9 @@ int main(int argc, char *argv[]) {
   double boostFrequency = deviceProp.clockRate / 1e6;
   int fp32CoresNum = getSPcores(deviceProp);
   double peakPerformance = boostFrequency * fp32CoresNum * 2;
-  printf(
-      "clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
-      "GFLOPS\n",
-      boostFrequency, fp32CoresNum, peakPerformance);
+  printf("clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
+         "GFLOPS\n",
+         boostFrequency, fp32CoresNum, peakPerformance);
   printf("A: %d x %d, B: %d x %d, C: %d x %d\n", M, K, K, N, M, N);
 
   GemmTester tester{alpha, beta, M, N, K, repeat_iterations};
