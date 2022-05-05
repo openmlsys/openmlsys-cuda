@@ -32,6 +32,17 @@ void gemmNaive(const float *A, const float *B, float *C, float alpha,
 using namespace Eigen;
 
 int main() {
+  int gpu_rank = 0;
+  cudaDeviceProp deviceProp{};
+  cudaGetDeviceProperties(&deviceProp, gpu_rank);
+  cudaSetDevice(gpu_rank);
+  printf("GPU %s status: ", deviceProp.name);
+  double boostFrequency = deviceProp.clockRate / 1e6;
+  int fp32CoresNum = 640;
+  double peakPerformance = boostFrequency * fp32CoresNum * 2;
+  printf("clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
+         "GFLOPS\n",
+         boostFrequency, fp32CoresNum, peakPerformance);
   omp_set_num_threads(omp_get_num_procs());
   unsigned M = 1024, N = 1024, K = 1024;
   float alpha = 1., beta = 0.;
@@ -49,23 +60,18 @@ int main() {
   cudaMalloc(&deviceCPtr, M * N * sizeof(float));
   cudaMemcpy(deviceCPtr, C.data(), M * N * sizeof(float),
              cudaMemcpyHostToDevice);
-
   cudaEvent_t startEvent, stopEvent;
   cudaEventCreate(&startEvent);
   cudaEventCreate(&stopEvent);
-
   cudaEventRecord(startEvent);
   gemmNaive(deviceAPrt, deviceBPtr, deviceCPtr, alpha, beta, M, N, K);
   cudaEventRecord(stopEvent);
-
   cudaEventSynchronize(stopEvent);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, startEvent, stopEvent);
   printf("GPU use: %.3f(ms)\n", milliseconds);
-
   cudaEventDestroy(stopEvent);
   cudaEventDestroy(startEvent);
-
   Matrix<float, Dynamic, Dynamic, RowMajor> hostResult{M, N},
       deviceResult{M, N};
   clock_t begin, end;
@@ -76,8 +82,11 @@ int main() {
   cudaMemcpy(deviceResult.data(), deviceCPtr, M * N * sizeof(float),
              cudaMemcpyDeviceToHost);
   cudaDeviceSynchronize();
-
   Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic> diffArray =
       (hostResult - deviceResult).array().abs();
   printf("Max Error: %f\n", diffArray.maxCoeff());
+
+  double GFLOPS = 2 * 1e-9 * M * N * K / (milliseconds * 1e-3);
+  printf("GPU Throughput: %.3f GFLOPS\n", GFLOPS);
 }
+

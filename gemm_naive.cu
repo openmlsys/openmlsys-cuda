@@ -7,11 +7,11 @@ __global__ void gemmKernel(const float *__restrict__ A,
                            unsigned K) {
   unsigned int m = threadIdx.x + blockDim.x * blockIdx.x;
   unsigned int n = threadIdx.y + blockDim.y * blockIdx.y;
-  if (m >= M || n >= N) return;
   float c = 0;
   openmlsys::Tensor2D<const float> pA{A, M, K};
   openmlsys::Tensor2D<const float> pB{B, K, N};
   openmlsys::Tensor2D<float> pC{C, M, N};
+  if (!pC.validOffset(m, n)) return;
   for (unsigned k = 0; k < K; ++k) {
     c += pA(m, k) * pB(k, n);
   }

@@ -124,27 +124,27 @@ __global__ void gemmKernel(const float *__restrict__ A,
   }
 
 #pragma unroll
-  for (auto &wm : c) {
+  for (auto &a : c) {
 #pragma unroll
-    for (auto &wn : wm) {
-      wn = wn * alpha;
+    for (auto &b : a) {
+      b = b * alpha;
     }
   }
 
 #pragma unroll
   for (unsigned i = 0; i < tileIterationsA; ++i) {
 #pragma unroll
-    for (unsigned wm = 0; wm < LayoutThread::m; wm++) {
-      const bool mValid = pC.validRowOffset(wm);
+    for (unsigned a = 0; a < LayoutThread::m; a++) {
+      const bool mValid = pC.validRowOffset(a);
 #pragma unroll
-      for (unsigned wn = 0; wn < tileIterationsB; wn++) {
-        const bool nValid = pC.validColOffset(wn * tileSharedIntervalBT);
+      for (unsigned b = 0; b < tileIterationsB; b++) {
+        const bool nValid = pC.validColOffset(b * tileSharedIntervalBT);
         if (mValid && nValid) {
-          openmlsys::float4 result{c[wm + i * LayoutThread::m][wn]};
+          openmlsys::float4 result{c[a + i * LayoutThread::m][b]};
           if (beta != 0) {
-            result = result + pC(wm, wn * tileSharedIntervalBT) * beta;
+            result = result + pC(a, b * tileSharedIntervalBT) * beta;
           }
-          pC(wm, wn * tileSharedIntervalBT) = result;
+          pC(a, b * tileSharedIntervalBT) = result;
         }
       }
     }

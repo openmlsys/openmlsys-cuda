@@ -9,13 +9,13 @@ __global__ void gemmKernel(const float *__restrict__ A,
   constexpr unsigned ratio = sizeof(openmlsys::float4) / sizeof(float);
   unsigned int m = threadIdx.x * LayoutThread::m + LayoutTile::m * blockIdx.x;
   unsigned int n = threadIdx.y * LayoutThread::n + LayoutTile::n * blockIdx.y;
-  if (m >= M || n >= N) return;
   openmlsys::Tensor2D<const float> pA{A, M, K};
   pA.addOffset(m, 0);
   openmlsys::Tensor2D<const openmlsys::float4> pB{B, K, N / ratio};
   pB.addOffset(0, n / ratio);
   openmlsys::Tensor2D<openmlsys::float4> pC{C, M, N / ratio};
   pC.addOffset(m, n / ratio);
+  if (!pC.validOffset(0, 0)) return;
 
   const unsigned iterationA = LayoutTile::m / LayoutBlock::m / LayoutThread::m;
   const unsigned iterationB = LayoutTile::n / LayoutBlock::n / LayoutThread::n;

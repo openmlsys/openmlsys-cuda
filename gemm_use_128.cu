@@ -8,13 +8,13 @@ __global__ void gemmKernel(const float *__restrict__ A,
   constexpr unsigned ratio = sizeof(openmlsys::float4) / sizeof(float);
   unsigned int m = (threadIdx.x + blockDim.x * blockIdx.x) * ratio;
   unsigned int n = (threadIdx.y + blockDim.y * blockIdx.y) * ratio;
-  if (m >= M || n >= N) return;
   openmlsys::Tensor2D<const float> pA{A, M, K};
   pA.addOffset(m, 0);
   openmlsys::Tensor2D<const openmlsys::float4> pB{B, K, N / ratio};
   pB.addOffset(0, n / ratio);
   openmlsys::Tensor2D<openmlsys::float4> pC{C, M, N / ratio};
   pC.addOffset(m, n / ratio);
+  if (!pC.validOffset(0, 0)) return;
 
   openmlsys::float4 c[4];
   memset(c, 0, sizeof(c));
@@ -33,8 +33,8 @@ __global__ void gemmKernel(const float *__restrict__ A,
   }
 
 #pragma unroll
-  for (auto &wm : c) {
-    wm = wm * alpha;
+  for (auto &a : c) {
+    a = a * alpha;
   }
 
 #pragma unroll
