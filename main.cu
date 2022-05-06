@@ -257,15 +257,6 @@ int main(int argc, char *argv[]) {
     std::exit(1);
   }
 
-  Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic> a, b;
-  a.resize(3, 3);
-  b.resize(3, 3);
-  a.setRandom();
-  b.setRandom();
-  std::cout << "A/B:\n" << a / b.abs() << std::endl;
-  std::cout << "A:\n" << a << std::endl;
-  std::cout << "B:\n" << b << std::endl;
-
   const int cpu_procs = program.get<int>("--cpu_procs");
   const int gpu_rank = program.get<int>("--gpu_rank");
   const int repeat_iterations = program.get<int>("--repeat_iterations");
