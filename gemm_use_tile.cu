@@ -26,13 +26,13 @@ __global__ void gemmKernel(const float *__restrict__ A,
   for (unsigned k = 0; k < K; ++k) {
 #pragma unroll
     for (unsigned iterA = 0; iterA < iterationA; ++iterA) {
+      openmlsys::float4 fragmentA{};
+#pragma unroll
+      for (unsigned i = 0; i < ratio; ++i) {
+        fragmentA[i] = pA(i + iterA * intervalA, k);
+      }
 #pragma unroll
       for (unsigned iterB = 0; iterB < iterationB; ++iterB) {
-        openmlsys::float4 fragmentA{};
-#pragma unroll
-        for (unsigned i = 0; i < ratio; ++i) {
-          fragmentA[i] = pA(i + iterA * intervalA, k);
-        }
         openmlsys::float4 fragmentB = pB(k, iterB * intervalB / ratio);
 
 #pragma unroll
