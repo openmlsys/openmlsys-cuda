@@ -8,33 +8,18 @@
 #include <iostream>
 #include <utility>
 
-void gemmFinal(const float *deviceAPtr, const float *deviceBPtr,
-               float *deviceCPtr, float alpha, float beta, unsigned M,
-               unsigned N, unsigned K);
+#define declGemmFn(name)                                                       \
+  void name(const float *deviceAPtr, const float *deviceBPtr,                  \
+            float *deviceCPtr, float alpha, float beta, unsigned M,            \
+            unsigned N, unsigned K)
 
-void gemmUse128(const float *deviceAPtr, const float *deviceBPtr,
-                float *deviceCPtr, float alpha, float beta, unsigned M,
-                unsigned N, unsigned K);
-
-void gemmUseTile(const float *deviceAPtr, const float *deviceBPtr,
-                 float *deviceCPtr, float alpha, float beta, unsigned M,
-                 unsigned N, unsigned K);
-
-void gemmNaive(const float *deviceAPtr, const float *deviceBPtr,
-               float *deviceCPtr, float alpha, float beta, unsigned M,
-               unsigned N, unsigned K);
-
-void gemmHideSmemLatency(const float *deviceAPtr, const float *deviceBPtr,
-                         float *deviceCPtr, float alpha, float beta, unsigned M,
-                         unsigned N, unsigned K);
-
-void gemmTransposeSmem(const float *deviceAPtr, const float *deviceBPtr,
-                       float *deviceCPtr, float alpha, float beta, unsigned M,
-                       unsigned N, unsigned K);
-
-void gemmUseSmem(const float *deviceAPtr, const float *deviceBPtr,
-                 float *deviceCPtr, float alpha, float beta, unsigned M,
-                 unsigned N, unsigned K);
+declGemmFn(gemmFinal);
+declGemmFn(gemmUse128);
+declGemmFn(gemmUseTile);
+declGemmFn(gemmNaive);
+declGemmFn(gemmHideSmemLatency);
+declGemmFn(gemmTransposeSmem);
+declGemmFn(gemmUseSmem);
 
 class GemmTester {
   class cuTimer {
