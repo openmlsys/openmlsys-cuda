@@ -137,16 +137,18 @@ __global__ void gemmKernel(const float *__restrict__ A,
           tileB[writeStageIdx][kinTileB + a * tileGlobalIntervalB][nInTileB] =
               bufferB[a];
         }
+        writeStageIdx = !writeStageIdx;
+        __syncthreads();
       }
 #pragma unroll
       for (unsigned a = 0; a < tileIterationsA; ++a) {
         fragmentA[(j + 1) % 2][a] =
-            tileA[!writeStageIdx][j + 1][a * tileSharedIntervalAT + mInTileC];
+            tileA[!writeStageIdx][(j + 1) % LayoutTile::k][a * tileSharedIntervalAT + mInTileC];
       }
 #pragma unroll
       for (unsigned a = 0; a < tileIterationsB; ++a) {
         fragmentB[(j + 1) % 2][a] =
-            tileB[!writeStageIdx][j + 1][a * tileSharedIntervalBT + nInTileC];
+            tileB[!writeStageIdx][(j + 1) % LayoutTile::k][a * tileSharedIntervalBT + nInTileC];
       }
 #pragma unroll
       for (unsigned d = 0; d < tileIterationsA * LayoutThread::m; ++d) {
@@ -159,8 +161,6 @@ __global__ void gemmKernel(const float *__restrict__ A,
         }
       }
     }
-    writeStageIdx = !writeStageIdx;
-    __syncthreads();
   }
 
 #pragma unroll
