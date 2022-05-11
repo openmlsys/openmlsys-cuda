@@ -122,7 +122,22 @@ __global__ void gemmKernel(const float *__restrict__ A,
     }
 
 #pragma unroll
-    for (unsigned j = 0; j < LayoutTile::k - 1; j++) {
+    for (unsigned j = 0; j < LayoutTile::k; j++) {
+      if ((i < K) && (j == LayoutTile::k - 1)) {
+#pragma unroll
+        for (unsigned d = 0; d < tileIterationsA; ++d) {
+#pragma unroll
+          for (unsigned e = 0; e < LayoutThread::m; ++e) {
+            tileA[writeStageIdx][kInTileA * ratio + e][d * tileSharedIntervalAT]
+                 [mInTileA] = bufferA[d][e];
+          }
+        }
+#pragma unroll
+        for (unsigned a = 0; a < tileIterationsB; ++a) {
+          tileB[writeStageIdx][kinTileB + a * tileGlobalIntervalB][nInTileB] =
+              bufferB[a];
+        }
+      }
 #pragma unroll
       for (unsigned a = 0; a < tileIterationsA; ++a) {
         fragmentA[(j + 1) % 2][a] =
@@ -144,44 +159,8 @@ __global__ void gemmKernel(const float *__restrict__ A,
         }
       }
     }
-
-    if (i < K) {
-#pragma unroll
-      for (unsigned d = 0; d < tileIterationsA; ++d) {
-#pragma unroll
-        for (unsigned e = 0; e < LayoutThread::m; ++e) {
-          tileA[writeStageIdx][kInTileA * ratio + e][d * tileSharedIntervalAT]
-               [mInTileA] = bufferA[d][e];
-        }
-      }
-#pragma unroll
-      for (unsigned a = 0; a < tileIterationsB; ++a) {
-        tileB[writeStageIdx][kinTileB + a * tileGlobalIntervalB][nInTileB] =
-            bufferB[a];
-      }
-      writeStageIdx = !writeStageIdx;
-      __syncthreads();
-    }
-#pragma unroll
-    for (unsigned a = 0; a < tileIterationsA; ++a) {
-      fragmentA[0][a] =
-          tileA[!writeStageIdx][0][a * tileSharedIntervalAT + mInTileC];
-    }
-#pragma unroll
-    for (unsigned a = 0; a < tileIterationsB; ++a) {
-      fragmentB[0][a] =
-          tileB[!writeStageIdx][0][a * tileSharedIntervalBT + nInTileC];
-    }
-
-#pragma unroll
-    for (unsigned d = 0; d < tileIterationsA * LayoutThread::m; ++d) {
-#pragma unroll
-      for (unsigned e = 0; e < tileIterationsB * LayoutThreadT::n; ++e) {
-        c[d][e] = c[d][e] +
-                  fragmentB[1][e] *
-                      fragmentA[1][d / LayoutThread::m][d % LayoutThread::m];
-      }
-    }
+    writeStageIdx = !writeStageIdx;
+    __syncthreads();
   }
 
 #pragma unroll
