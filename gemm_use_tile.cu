@@ -80,8 +80,8 @@ void gemmUseTile(const float *deviceAPtr, const float *deviceBPtr,
   using LayoutThread = openmlsys::Layout<4, 4>;
 
   dim3 block(LayoutBlock::m, LayoutBlock::n);
-  dim3 grid((M * LayoutTile::m / LayoutBlock::m - 1) / LayoutBlock::m + 1,
-            (N * LayoutTile::n / LayoutBlock::n - 1) / LayoutBlock::n + 1);
+  dim3 grid((M * LayoutBlock::m / LayoutTile::m - 1) / LayoutBlock::m + 1,
+            (N * LayoutBlock::n / LayoutTile::n - 1) / LayoutBlock::n + 1);
 
   gemmKernel<LayoutTile, LayoutBlock, LayoutThread><<<grid, block>>>(
       deviceAPtr, deviceBPtr, deviceCPtr, alpha, beta, M, N, K);
