@@ -200,6 +200,7 @@ int getSPcores(cudaDeviceProp devProp) {
       cores = mp * 128;
     else
       throw std::runtime_error("Unknown device type");
+    break;
   default:
     throw std::runtime_error("Unknown device type");
   }
