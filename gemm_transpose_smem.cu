@@ -40,10 +40,12 @@ __global__ void gemmKernel(const float *__restrict__ A,
   constexpr unsigned tileSizeB = LayoutTile::n * LayoutTile::k;
   constexpr unsigned tileIterationsA = tileSizeA / blockSize / ratio;
   constexpr unsigned tileGlobalIntervalA = blockSize / LayoutTileT::k;
-  constexpr unsigned tileSharedIntervalAT = LayoutTileT::m / tileIterationsA;
+  constexpr unsigned tileComputeIterationsA = LayoutTileT::m / LayoutBlock::m;
+  constexpr unsigned tileSharedIntervalAT = LayoutTileT::m / tileComputeIterationsA;
   constexpr unsigned tileIterationsB = tileSizeB / blockSize / ratio;
   constexpr unsigned tileGlobalIntervalB = blockSize / LayoutTileT::n;
-  constexpr unsigned tileSharedIntervalBT = LayoutTileT::n / tileIterationsB;
+  constexpr unsigned tileComputeIterationsB = LayoutTileT::n / LayoutBlock::n;
+  constexpr unsigned tileSharedIntervalBT = LayoutTileT::n / tileComputeIterationsB;
 
   openmlsys::float4 bufferA[tileIterationsA];
   openmlsys::float4 bufferB[tileIterationsB];
@@ -60,12 +62,12 @@ __global__ void gemmKernel(const float *__restrict__ A,
     validLoadTileB[i] = pB.validColOffset(0);
   }
 
-  openmlsys::float4 c[tileIterationsA * LayoutThread::m]
-             [tileIterationsB * LayoutThreadT::n];
+  openmlsys::float4 c[tileComputeIterationsA * LayoutThread::m]
+             [tileComputeIterationsB * LayoutThreadT::n];
   memset(c, 0, sizeof(c));
 
-  openmlsys::float4 fragmentA[tileIterationsA * LayoutThreadT::m];
-  openmlsys::float4 fragmentB[tileIterationsB * LayoutThreadT::n];
+  openmlsys::float4 fragmentA[tileComputeIterationsA * LayoutThreadT::m];
+  openmlsys::float4 fragmentB[tileComputeIterationsB * LayoutThreadT::n];
 
   for (unsigned i = 0; i < K; i += LayoutTile::k) {
 #pragma unroll
@@ -88,7 +90,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     for (unsigned a = 0; a < tileIterationsA; ++a) {
 #pragma unroll
       for (unsigned j = 0; j < LayoutThread::m; ++j) {
-        tileA[kInTileA * ratio + j][a * tileSharedIntervalAT][mInTileA] =
+        tileA[kInTileA * ratio + j][(a * tileGlobalIntervalA + mInTileA) / ratio][(a * tileGlobalIntervalA + mInTileA) % ratio] =
             bufferA[a][j];
       }
     }
@@ -102,17 +104,17 @@ __global__ void gemmKernel(const float *__restrict__ A,
 #pragma unroll
     for (unsigned j = 0; j < LayoutTile::k; j++) {
 #pragma unroll
-      for (unsigned a = 0; a < tileIterationsA; ++a) {
+      for (unsigned a = 0; a < tileComputeIterationsA; ++a) {
         fragmentA[a] = tileA[j][a * tileSharedIntervalAT + mInTileC];
       }
 #pragma unroll
-      for (unsigned a = 0; a < tileIterationsB; ++a) {
+      for (unsigned a = 0; a < tileComputeIterationsB; ++a) {
         fragmentB[a] = tileB[j][a * tileSharedIntervalBT + nInTileC];
       }
 #pragma unroll
-      for (unsigned d = 0; d < tileIterationsA * LayoutThread::m; ++d) {
+      for (unsigned d = 0; d < tileComputeIterationsA * LayoutThread::m; ++d) {
 #pragma unroll
-        for (unsigned e = 0; e < tileIterationsB * LayoutThreadT::n; ++e) {
+        for (unsigned e = 0; e < tileComputeIterationsB * LayoutThreadT::n; ++e) {
           c[d][e] =
               c[d][e] + fragmentB[e] *
                             fragmentA[d / LayoutThread::m][d % LayoutThread::m];
@@ -132,12 +134,12 @@ __global__ void gemmKernel(const float *__restrict__ A,
   }
 
 #pragma unroll
-  for (unsigned i = 0; i < tileIterationsA; ++i) {
+  for (unsigned i = 0; i < tileComputeIterationsA; ++i) {
 #pragma unroll
     for (unsigned a = 0; a < LayoutThread::m; a++) {
       const bool mValid = pC.validRowOffset(a);
 #pragma unroll
-      for (unsigned b = 0; b < tileIterationsB; b++) {
+      for (unsigned b = 0; b < tileComputeIterationsB; b++) {
         const bool nValid = pC.validColOffset(b * tileSharedIntervalBT);
         if (mValid && nValid) {
           openmlsys::float4 result{c[a + i * LayoutThread::m][b]};
