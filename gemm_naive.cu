@@ -27,7 +27,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
 void gemmNaive(const float *deviceAPtr, const float *deviceBPtr,
                float *deviceCPtr, float alpha, float beta, unsigned M,
                unsigned N, unsigned K) {
-  dim3 block(32, 32);
+  dim3 block(16, 16);
   dim3 grid((M + block.x - 1) / block.x, (N + block.y - 1) / block.y);
 
   gemmKernel<<<grid, block>>>(deviceAPtr, deviceBPtr, deviceCPtr, alpha, beta,
