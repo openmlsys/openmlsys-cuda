@@ -72,15 +72,14 @@ __global__ void gemmKernel(const float *__restrict__ A,
   for (unsigned i = 0; i < K; i += LayoutTile::k) {
 #pragma unroll
     for (unsigned j = 0; j < tileIterationsA; ++j) {
-      validLoadTileA[j] = validLoadTileA[j] && pA.validColOffset(0);
+      validLoadTileA[j] &= pA.validColOffset(0);
       bufferA[j] =
           validLoadTileA[j] ? pA(j * tileGlobalIntervalA, 0) : float4Zero;
     }
 
 #pragma unroll
     for (unsigned j = 0; j < tileIterationsB; ++j) {
-      validLoadTileB[j] =
-          validLoadTileB[j] && pB.validRowOffset(j * tileGlobalIntervalB);
+      validLoadTileB[j] &= pB.validRowOffset(j * tileGlobalIntervalB);
       bufferB[j] =
           validLoadTileB[j] ? pB(j * tileGlobalIntervalB, 0) : float4Zero;
     }
