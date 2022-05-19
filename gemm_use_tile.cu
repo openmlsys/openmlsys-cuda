@@ -15,7 +15,6 @@ __global__ void gemmKernel(const float *__restrict__ A,
   pB.addOffset(0, n / ratio);
   openmlsys::Tensor2D<openmlsys::float4> pC{C, M, N / ratio};
   pC.addOffset(m, n / ratio);
-//  if (!pC.validOffset(0, 0)) return;
 
   const unsigned iterationA = LayoutTile::m / LayoutBlock::m / LayoutThread::m;
   const unsigned iterationB = LayoutTile::n / LayoutBlock::n / LayoutThread::n;
@@ -50,7 +49,9 @@ __global__ void gemmKernel(const float *__restrict__ A,
 #pragma unroll
       for (unsigned iterB = 0; iterB < iterationB; ++iterB) {
         validLoadTileB[iterB] &= pB.validRowOffset(k);
-        openmlsys::float4 fragmentB = validLoadTileB[iterB] ? pB(k, iterB * intervalB / ratio) : float4Zero;
+        openmlsys::float4 fragmentB = validLoadTileB[iterB]
+                                          ? pB(k, iterB * intervalB / ratio)
+                                          : float4Zero;
 
 #pragma unroll
         for (unsigned i = 0; i < ratio; ++i) {
@@ -87,7 +88,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     }
   }
 }
-}  // namespace
+} // namespace
 
 void gemmUseTile(const float *deviceAPtr, const float *deviceBPtr,
                  float *deviceCPtr, float alpha, float beta, unsigned M,

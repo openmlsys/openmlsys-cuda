@@ -9,7 +9,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
   constexpr unsigned ratio = sizeof(openmlsys::float4) / sizeof(float);
   using LayoutTileT =
       openmlsys::Layout<LayoutTile::m / ratio, LayoutTile::n / ratio,
-                                LayoutTile::k / ratio>;
+                        LayoutTile::k / ratio>;
   using LayoutThreadT =
       openmlsys::Layout<LayoutThread::m / ratio, LayoutThread::n / ratio>;
   constexpr unsigned blockSize = LayoutBlock::m * LayoutBlock::n;
@@ -41,11 +41,13 @@ __global__ void gemmKernel(const float *__restrict__ A,
   constexpr unsigned tileIterationsA = tileSizeA / blockSize / ratio;
   constexpr unsigned tileGlobalIntervalA = blockSize / LayoutTileT::k;
   constexpr unsigned tileComputeIterationsA = LayoutTileT::m / LayoutBlock::m;
-  constexpr unsigned tileSharedIntervalAT = LayoutTileT::m / tileComputeIterationsA;
+  constexpr unsigned tileSharedIntervalAT =
+      LayoutTileT::m / tileComputeIterationsA;
   constexpr unsigned tileIterationsB = tileSizeB / blockSize / ratio;
   constexpr unsigned tileGlobalIntervalB = blockSize / LayoutTileT::n;
   constexpr unsigned tileComputeIterationsB = LayoutTileT::n / LayoutBlock::n;
-  constexpr unsigned tileSharedIntervalBT = LayoutTileT::n / tileComputeIterationsB;
+  constexpr unsigned tileSharedIntervalBT =
+      LayoutTileT::n / tileComputeIterationsB;
 
   openmlsys::float4 bufferA[tileIterationsA];
   openmlsys::float4 bufferB[tileIterationsB];
@@ -69,15 +71,16 @@ __global__ void gemmKernel(const float *__restrict__ A,
   }
 
   openmlsys::float4 c[tileComputeIterationsA * LayoutThread::m]
-             [tileComputeIterationsB * LayoutThreadT::n];
+                     [tileComputeIterationsB * LayoutThreadT::n];
   memset(c, 0, sizeof(c));
   bool writeStageIdx = false;
 #pragma unroll
   for (unsigned i = 0; i < tileIterationsA; ++i) {
 #pragma unroll
     for (unsigned j = 0; j < LayoutThread::m; ++j) {
-      tileA[writeStageIdx][kInTileA * ratio + j][(i * tileGlobalIntervalA + mInTileA) / ratio][(i * tileGlobalIntervalA + mInTileA) % ratio] =
-          bufferA[i][j];
+      tileA[writeStageIdx][kInTileA * ratio + j]
+           [(i * tileGlobalIntervalA + mInTileA) / ratio]
+           [(i * tileGlobalIntervalA + mInTileA) % ratio] = bufferA[i][j];
     }
   }
 
@@ -129,8 +132,9 @@ __global__ void gemmKernel(const float *__restrict__ A,
         for (unsigned d = 0; d < tileIterationsA; ++d) {
 #pragma unroll
           for (unsigned e = 0; e < LayoutThread::m; ++e) {
-            tileA[writeStageIdx][kInTileA * ratio + e][(d * tileGlobalIntervalA + mInTileA) / ratio][(d * tileGlobalIntervalA + mInTileA) % ratio] =
-                bufferA[d][e];
+            tileA[writeStageIdx][kInTileA * ratio + e]
+                 [(d * tileGlobalIntervalA + mInTileA) / ratio]
+                 [(d * tileGlobalIntervalA + mInTileA) % ratio] = bufferA[d][e];
           }
         }
 #pragma unroll
@@ -144,17 +148,20 @@ __global__ void gemmKernel(const float *__restrict__ A,
 #pragma unroll
       for (unsigned a = 0; a < tileComputeIterationsA; ++a) {
         fragmentA[(j + 1) % 2][a] =
-            tileA[!writeStageIdx][(j + 1) % LayoutTile::k][a * tileSharedIntervalAT + mInTileC];
+            tileA[!writeStageIdx][(j + 1) % LayoutTile::k]
+                 [a * tileSharedIntervalAT + mInTileC];
       }
 #pragma unroll
       for (unsigned a = 0; a < tileComputeIterationsB; ++a) {
         fragmentB[(j + 1) % 2][a] =
-            tileB[!writeStageIdx][(j + 1) % LayoutTile::k][a * tileSharedIntervalBT + nInTileC];
+            tileB[!writeStageIdx][(j + 1) % LayoutTile::k]
+                 [a * tileSharedIntervalBT + nInTileC];
       }
 #pragma unroll
       for (unsigned d = 0; d < tileComputeIterationsA * LayoutThread::m; ++d) {
 #pragma unroll
-        for (unsigned e = 0; e < tileComputeIterationsB * LayoutThreadT::n; ++e) {
+        for (unsigned e = 0; e < tileComputeIterationsB * LayoutThreadT::n;
+             ++e) {
           c[d][e] =
               c[d][e] +
               fragmentB[j % 2][e] *
@@ -192,7 +199,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     pC.addOffset(tileSharedIntervalAT * ratio, 0);
   }
 }
-}  // namespace
+} // namespace
 
 void gemmFinal(const float *deviceAPtr, const float *deviceBPtr,
                float *deviceCPtr, float alpha, float beta, unsigned M,

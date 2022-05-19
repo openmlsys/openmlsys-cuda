@@ -89,4 +89,3 @@ int main() {
   double GFLOPS = 2 * 1e-9 * M * N * K / (milliseconds * 1e-3);
   printf("GPU Throughput: %.3f GFLOPS\n", GFLOPS);
 }
-
