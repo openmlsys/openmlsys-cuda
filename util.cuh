@@ -30,32 +30,32 @@ template <typename T>
 struct __device_builtin__ Tensor2D {
   T *const __restrict__ ptr;
   const unsigned rows, cols;
-  unsigned _rowOffset{0}, _colOffset{0};
+  int _rowOffset{0}, _colOffset{0};
 
   template <typename t>
   __host__ __device__ Tensor2D(t &&ptr, unsigned rows, unsigned cols)
       : ptr{reinterpret_cast<T *>(ptr)}, rows{rows}, cols{cols} {};
 
   template <typename t = T>
-  __host__ __device__ void addOffset(unsigned rowOffset, unsigned colOffset) {
+  __host__ __device__ void addOffset(int rowOffset, int colOffset) {
     _rowOffset += rowOffset;
     _colOffset += colOffset * sizeof(t) / sizeof(T);
   }
 
-  __host__ __device__ bool validRowOffset(unsigned rowOffset) const {
+  __host__ __device__ bool validRowOffset(int rowOffset) const {
     return (_rowOffset + rowOffset) < rows;
   }
 
-  __host__ __device__ bool validColOffset(unsigned colOffset) const {
+  __host__ __device__ bool validColOffset(int colOffset) const {
     return (_colOffset + colOffset) < cols;
   }
 
-  __host__ __device__ bool validOffset(unsigned rowOffset,
-                                       unsigned colOffset) const {
+  __host__ __device__ bool validOffset(int rowOffset,
+                                       int colOffset) const {
     return validRowOffset(rowOffset) && validColOffset(colOffset);
   }
 
-  __host__ __device__ T &operator()(unsigned row, unsigned col) const {
+  __host__ __device__ T &operator()(int row, int col) const {
     return ptr[_colOffset + col + (row + _rowOffset) * cols];
   }
 };
