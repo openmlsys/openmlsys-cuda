@@ -15,25 +15,42 @@ __global__ void gemmKernel(const float *__restrict__ A,
   pB.addOffset(0, n / ratio);
   openmlsys::Tensor2D<openmlsys::float4> pC{C, M, N / ratio};
   pC.addOffset(m, n / ratio);
-  if (!pC.validOffset(0, 0)) return;
+//  if (!pC.validOffset(0, 0)) return;
 
   const unsigned iterationA = LayoutTile::m / LayoutBlock::m / LayoutThread::m;
   const unsigned iterationB = LayoutTile::n / LayoutBlock::n / LayoutThread::n;
   const unsigned intervalA = LayoutTile::m / iterationA;
   const unsigned intervalB = LayoutTile::n / iterationB;
+
+  bool validLoadTileA[iterationA];
+  bool validLoadTileB[iterationB];
+
+#pragma unroll
+  for (unsigned i = 0; i < iterationA; ++i) {
+    validLoadTileA[i] = pA.validRowOffset(i * intervalA);
+  }
+
+#pragma unroll
+  for (unsigned i = 0; i < iterationB; ++i) {
+    validLoadTileB[i] = pB.validColOffset(i * intervalB / ratio);
+  }
+  constexpr openmlsys::float4 float4Zero{0.f, 0.f, 0.f, 0.f};
+
   openmlsys::float4 c[iterationA][iterationB][4];
   memset(c, 0, sizeof(c));
   for (unsigned k = 0; k < K; ++k) {
 #pragma unroll
     for (unsigned iterA = 0; iterA < iterationA; ++iterA) {
       openmlsys::float4 fragmentA{};
+      validLoadTileA[iterA] &= pA.validColOffset(k);
 #pragma unroll
       for (unsigned i = 0; i < ratio; ++i) {
-        fragmentA[i] = pA(i + iterA * intervalA, k);
+        fragmentA[i] = validLoadTileA[i] ? pA(i + iterA * intervalA, k) : 0;
       }
 #pragma unroll
       for (unsigned iterB = 0; iterB < iterationB; ++iterB) {
-        openmlsys::float4 fragmentB = pB(k, iterB * intervalB / ratio);
+        validLoadTileB[iterB] &= pB.validRowOffset(k);
+        openmlsys::float4 fragmentB = validLoadTileB[iterB] ? pB(k, iterB * intervalB / ratio) : float4Zero;
 
 #pragma unroll
         for (unsigned i = 0; i < ratio; ++i) {
