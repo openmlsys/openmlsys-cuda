@@ -1,14 +1,14 @@
+#include <omp.h>
+
 #include <Eigen/Core>
 #include <ctime>
-#include <omp.h>
 
 __global__ void gemmKernel(const float *A, const float *B, float *C,
                            float alpha, float beta, unsigned M, unsigned N,
                            unsigned K) {
   unsigned int m = threadIdx.x + blockDim.x * blockIdx.x;
   unsigned int n = threadIdx.y + blockDim.y * blockIdx.y;
-  if (m >= M || n >= N)
-    return;
+  if (m >= M || n >= N) return;
   float c = 0;
   for (unsigned k = 0; k < K; ++k) {
     c += A[m * K + k] * B[k * N + n];
@@ -29,8 +29,6 @@ void gemmNaive(const float *A, const float *B, float *C, float alpha,
   gemmKernel<<<grid, block>>>(A, B, C, alpha, beta, M, N, K);
 }
 
-using namespace Eigen;
-
 int main() {
   int gpu_rank = 0;
   cudaDeviceProp deviceProp{};
@@ -40,14 +38,16 @@ int main() {
   double boostFrequency = deviceProp.clockRate / 1e6;
   int fp32CoresNum = 640;
   double peakPerformance = boostFrequency * fp32CoresNum * 2;
-  printf("clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
-         "GFLOPS\n",
-         boostFrequency, fp32CoresNum, peakPerformance);
+  printf(
+      "clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
+      "GFLOPS\n",
+      boostFrequency, fp32CoresNum, peakPerformance);
   omp_set_num_threads(omp_get_num_procs());
   unsigned M = 1024, N = 1024, K = 1024;
   float alpha = 1., beta = 0.;
   float *deviceAPrt, *deviceBPtr, *deviceCPtr;
-  Matrix<float, Dynamic, Dynamic, RowMajor> A{M, K}, B{K, N}, C{M, N};
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> A{M, K},
+      B{K, N}, C{M, N};
   A.setRandom();
   B.setRandom();
   C.setRandom();
@@ -72,8 +72,8 @@ int main() {
   printf("GPU use: %.3f(ms)\n", milliseconds);
   cudaEventDestroy(stopEvent);
   cudaEventDestroy(startEvent);
-  Matrix<float, Dynamic, Dynamic, RowMajor> hostResult{M, N},
-      deviceResult{M, N};
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+      hostResult{M, N}, deviceResult{M, N};
   clock_t begin, end;
   begin = clock();
   hostResult = alpha * (A * B) + beta * C;
