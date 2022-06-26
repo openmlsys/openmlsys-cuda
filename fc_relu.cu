@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 
   Gemm::Arguments args({batchSize, outDim, inDim}, {xDevPtr, inDim},
                        {weightDevPtr, outDim}, {biasDevPtr, 0},
-                       {outDevPtr, inDim}, {});
+                       {outDevPtr, outDim}, {});
   Gemm gemm_op;
   gemm_op(args);
   cudaDeviceSynchronize();
