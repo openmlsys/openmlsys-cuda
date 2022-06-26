@@ -33,5 +33,5 @@ target_link_libraries(first_attempt OpenMP::OpenMP_CXX)
 
 set(CUTLASS_INCLUDE_DIR ./third_party/cutlass/include)
 add_executable(fc_relu fc_relu.cu)
-target_link_libraries(fc_relu PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(fc_relu PRIVATE OpenMP::OpenMP_CXX ${gflags_LIBRARIES})
 target_include_directories(fc_relu PRIVATE ${CUTLASS_INCLUDE_DIR})

@@ -1,4 +1,5 @@
 #include <omp.h>
+#include <gflags/gflags.h>
 
 #include <Eigen/Core>
 #include <cstdio>
@@ -46,11 +47,15 @@ struct ReLUEpilogue {
   }
 };
 
-const int outDim = 1024;
-const int batchSize = 1024;
-const int inDim = 1024;
+DEFINE_int32(out_dim, {}, "output dim of FC");
+DEFINE_int32(batch_size, {}, "batch size");
+DEFINE_int32(in_dim, {}, "input dim of FC");
 
-int main() {
+int main(int argc, char *argv[]) {
+  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  const int outDim = FLAGS_out_dim;
+  const int batchSize = FLAGS_batch_size;
+  const int inDim = FLAGS_in_dim;
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = float;

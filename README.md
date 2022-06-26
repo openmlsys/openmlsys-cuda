@@ -32,6 +32,6 @@ make -j4
 
 ## Examples
 
-- `first_attemp`: The naive implementation
+- `first_attempt`: The naive implementation
 - `gemm`: Collection of implementations using different optimization tricks
 - `fc_relu`: Example for fusing FC and ReLU by using CUTLASS
