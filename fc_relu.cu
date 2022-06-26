@@ -47,15 +47,19 @@ struct ReLUEpilogue {
   }
 };
 
-DEFINE_int32(out_dim, {}, "output dim of FC");
-DEFINE_int32(batch_size, {}, "batch size");
-DEFINE_int32(in_dim, {}, "input dim of FC");
+DEFINE_int32(cpu_procs, omp_get_num_procs(), "processor num used of CPU");
+DEFINE_int32(in_dim, 512, "input dim of FC");
+DEFINE_int32(out_dim, 1024, "output dim of FC");
+DEFINE_int32(batch_size, 128, "batch size");
 
 int main(int argc, char *argv[]) {
   GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   const int outDim = FLAGS_out_dim;
   const int batchSize = FLAGS_batch_size;
   const int inDim = FLAGS_in_dim;
+
+  printf("Starting the problem with batch size: %d, input dim: %d, output dim: %d\n", batchSize, inDim, outDim);
+
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = float;
@@ -82,7 +86,7 @@ int main(int argc, char *argv[]) {
       InstructionShape,
       ReLUEpilogue<ElementOutput, ElementComputeEpilogue, ElementAccumulator>>;
 
-  omp_set_num_threads(omp_get_num_procs());
+  omp_set_num_threads(FLAGS_cpu_procs);
 
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> x,
       weight, outEigen, outCUTLASS;
