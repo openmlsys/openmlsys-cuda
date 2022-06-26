@@ -1,5 +1,6 @@
-#include <omp.h>
 #include <gflags/gflags.h>
+#include <omp.h>
+#include <cuda_runtime_api.h>
 
 #include <Eigen/Core>
 #include <cstdio>
@@ -58,7 +59,10 @@ int main(int argc, char *argv[]) {
   const int batchSize = FLAGS_batch_size;
   const int inDim = FLAGS_in_dim;
 
-  printf("Starting the problem with batch size: %d, input dim: %d, output dim: %d\n", batchSize, inDim, outDim);
+  printf(
+      "Starting the problem with batch size: %d, input dim: %d, output dim: "
+      "%d\n",
+      batchSize, inDim, outDim);
 
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
@@ -69,7 +73,7 @@ int main(int argc, char *argv[]) {
   using RowMajor = cutlass::layout::RowMajor;
 
   using OperatorClass = cutlass::arch::OpClassSimt;
-  using ArchTag = cutlass::arch::Sm80;
+  using ArchTag = cutlass::arch::Sm50;
 
   using DefaultGemmConfiguration =
       cutlass::gemm::device::DefaultGemmConfiguration<
