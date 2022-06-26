@@ -88,7 +88,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     }
   }
 }
-} // namespace
+}  // namespace
 
 void gemmUseTile(const float *deviceAPtr, const float *deviceBPtr,
                  float *deviceCPtr, float alpha, float beta, unsigned M,

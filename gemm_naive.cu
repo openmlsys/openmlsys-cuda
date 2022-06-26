@@ -11,8 +11,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
   openmlsys::Tensor2D<const float> pA{A, M, K};
   openmlsys::Tensor2D<const float> pB{B, K, N};
   openmlsys::Tensor2D<float> pC{C, M, N};
-  if (!pC.validOffset(m, n))
-    return;
+  if (!pC.validOffset(m, n)) return;
   for (unsigned k = 0; k < K; ++k) {
     c += pA(m, k) * pB(k, n);
   }
@@ -23,7 +22,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
   }
   pC(m, n) = result;
 }
-} // namespace
+}  // namespace
 
 void gemmNaive(const float *deviceAPtr, const float *deviceBPtr,
                float *deviceCPtr, float alpha, float beta, unsigned M,

@@ -1,16 +1,16 @@
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <gflags/gflags.h>
 #include <omp.h>
 
 #include <Eigen/Core>
 #include <ctime>
-#include <gflags/gflags.h>
 #include <iostream>
 #include <utility>
 
-#define declGemmFn(name)                                                       \
-  void name(const float *deviceAPtr, const float *deviceBPtr,                  \
-            float *deviceCPtr, float alpha, float beta, unsigned M,            \
+#define declGemmFn(name)                                            \
+  void name(const float *deviceAPtr, const float *deviceBPtr,       \
+            float *deviceCPtr, float alpha, float beta, unsigned M, \
             unsigned N, unsigned K)
 
 declGemmFn(gemmFinal);
@@ -25,7 +25,7 @@ class GemmTester {
   class cuTimer {
     cudaEvent_t startEvent{}, stopEvent{};
 
-  public:
+   public:
     cuTimer() {
       cudaEventCreate(&startEvent);
       cudaEventCreate(&stopEvent);
@@ -73,7 +73,8 @@ class GemmTester {
     printf("Max Error: %f\n", diffArray.maxCoeff());
   }
 
-  template <typename Function> void profile(Function &&gemmFunction) {
+  template <typename Function>
+  void profile(Function &&gemmFunction) {
     double elapsedTime = 0;
     for (int i = 0; i < iteration; ++i) {
       tearUp();
@@ -87,11 +88,17 @@ class GemmTester {
            GFLOPS);
   }
 
-public:
+ public:
   explicit GemmTester(float alpha, float beta, unsigned M, unsigned N,
                       unsigned K, int iteration)
-      : hostC{M, N}, deviceCCopied{M, N}, alpha(alpha), beta(beta), M(M), N(N),
-        K(K), iteration{iteration} {
+      : hostC{M, N},
+        deviceCCopied{M, N},
+        alpha(alpha),
+        beta(beta),
+        M(M),
+        N(N),
+        K(K),
+        iteration{iteration} {
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> A{M,
                                                                             K};
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> B{K,
@@ -151,7 +158,7 @@ public:
 class gemmCuBlas {
   cublasHandle_t handle{nullptr};
 
-public:
+ public:
   gemmCuBlas() { cublasCreate(&handle); }
   ~gemmCuBlas() { cublasDestroy(handle); }
 
@@ -167,42 +174,42 @@ int getSPcores(cudaDeviceProp devProp) {
   int cores = 0;
   int mp = devProp.multiProcessorCount;
   switch (devProp.major) {
-  case 2: // Fermi
-    if (devProp.minor == 1)
-      cores = mp * 48;
-    else
-      cores = mp * 32;
-    break;
-  case 3: // Kepler
-    cores = mp * 192;
-    break;
-  case 5: // Maxwell
-    cores = mp * 128;
-    break;
-  case 6: // Pascal
-    if ((devProp.minor == 1) || (devProp.minor == 2))
+    case 2:  // Fermi
+      if (devProp.minor == 1)
+        cores = mp * 48;
+      else
+        cores = mp * 32;
+      break;
+    case 3:  // Kepler
+      cores = mp * 192;
+      break;
+    case 5:  // Maxwell
       cores = mp * 128;
-    else if (devProp.minor == 0)
-      cores = mp * 64;
-    else
+      break;
+    case 6:  // Pascal
+      if ((devProp.minor == 1) || (devProp.minor == 2))
+        cores = mp * 128;
+      else if (devProp.minor == 0)
+        cores = mp * 64;
+      else
+        throw std::runtime_error("Unknown device type");
+      break;
+    case 7:  // Volta and Turing
+      if ((devProp.minor == 0) || (devProp.minor == 5))
+        cores = mp * 64;
+      else
+        throw std::runtime_error("Unknown device type");
+      break;
+    case 8:  // Ampere
+      if (devProp.minor == 0)
+        cores = mp * 64;
+      else if (devProp.minor == 6)
+        cores = mp * 128;
+      else
+        throw std::runtime_error("Unknown device type");
+      break;
+    default:
       throw std::runtime_error("Unknown device type");
-    break;
-  case 7: // Volta and Turing
-    if ((devProp.minor == 0) || (devProp.minor == 5))
-      cores = mp * 64;
-    else
-      throw std::runtime_error("Unknown device type");
-    break;
-  case 8: // Ampere
-    if (devProp.minor == 0)
-      cores = mp * 64;
-    else if (devProp.minor == 6)
-      cores = mp * 128;
-    else
-      throw std::runtime_error("Unknown device type");
-    break;
-  default:
-    throw std::runtime_error("Unknown device type");
   }
   return cores;
 }
@@ -230,9 +237,10 @@ int main(int argc, char *argv[]) {
   double boostFrequency = deviceProp.clockRate / 1e6;
   int fp32CoresNum = getSPcores(deviceProp);
   double peakPerformance = boostFrequency * fp32CoresNum * 2;
-  printf("clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
-         "GFLOPS\n",
-         boostFrequency, fp32CoresNum, peakPerformance);
+  printf(
+      "clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
+      "GFLOPS\n",
+      boostFrequency, fp32CoresNum, peakPerformance);
   printf("A: %d x %d, B: %d x %d, C: %d x %d\n", FLAGS_M, FLAGS_K, FLAGS_K,
          FLAGS_N, FLAGS_M, FLAGS_N);
 

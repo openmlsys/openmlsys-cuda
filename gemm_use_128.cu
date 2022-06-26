@@ -14,8 +14,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
   pB.addOffset(0, n / ratio);
   openmlsys::Tensor2D<openmlsys::float4> pC{C, M, N / ratio};
   pC.addOffset(m, n / ratio);
-  if (!pC.validOffset(0, 0))
-    return;
+  if (!pC.validOffset(0, 0)) return;
 
   openmlsys::float4 c[4];
   memset(c, 0, sizeof(c));
@@ -47,7 +46,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     pC(i, 0) = result;
   }
 }
-} // namespace
+}  // namespace
 
 void gemmUse128(const float *deviceAPtr, const float *deviceBPtr,
                 float *deviceCPtr, float alpha, float beta, unsigned M,

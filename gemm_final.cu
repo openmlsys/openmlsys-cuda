@@ -199,7 +199,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
     pC.addOffset(tileSharedIntervalAT * ratio, 0);
   }
 }
-} // namespace
+}  // namespace
 
 void gemmFinal(const float *deviceAPtr, const float *deviceBPtr,
                float *deviceCPtr, float alpha, float beta, unsigned M,

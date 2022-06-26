@@ -1,7 +1,8 @@
 #ifndef GEMM_UTIL_CUH
 #define GEMM_UTIL_CUH
 namespace openmlsys {
-template <int _m, int _n, int _k = 1> struct Layout {
+template <int _m, int _n, int _k = 1>
+struct Layout {
   static constexpr int m = _m;
   static constexpr int n = _n;
   static constexpr int k = _k;
@@ -25,7 +26,8 @@ struct __device_builtin__ __builtin_align__(16) float4 {
   }
 };
 
-template <typename T> struct __device_builtin__ Tensor2D {
+template <typename T>
+struct __device_builtin__ Tensor2D {
   T *const __restrict__ ptr;
   const unsigned rows, cols;
   int _rowOffset{0}, _colOffset{0};
@@ -56,5 +58,5 @@ template <typename T> struct __device_builtin__ Tensor2D {
     return ptr[_colOffset + col + (row + _rowOffset) * cols];
   }
 };
-} // namespace openmlsys
-#endif // GEMM_UTIL_CUH
+}  // namespace openmlsys
+#endif  // GEMM_UTIL_CUH
