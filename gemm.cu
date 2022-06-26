@@ -220,9 +220,9 @@ DEFINE_int32(repeat_iterations, 10,
              "repeat iteration numbers and average the result");
 DEFINE_double(alpha, 1., "alpha");
 DEFINE_double(beta, 1., "beta");
-DEFINE_uint32(M, {}, "M");
-DEFINE_uint32(N, {}, "N");
-DEFINE_uint32(K, {}, "K");
+DEFINE_uint32(M, 2048, "M");
+DEFINE_uint32(N, 2048, "N");
+DEFINE_uint32(K, 1024, "K");
 
 int main(int argc, char *argv[]) {
   GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
