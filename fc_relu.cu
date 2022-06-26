@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> x,
       weight, outEigen, outCUTLASS;
-  Eigen::Matrix<float, 1, Eigen::Dynamic> bias;
+  Eigen::Matrix<float, 1, Eigen::Dynamic, Eigen::RowMajor> bias;
   weight.resize(inDim, outDim);
   x.resize(batchSize, inDim);
   bias.resize(outDim);
