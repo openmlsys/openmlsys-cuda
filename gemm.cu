@@ -67,10 +67,7 @@ class GemmTester {
   }
 
   void checkValue() const {
-    Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic> diffArray =
-        (hostC - deviceCCopied).array().abs();
-
-    printf("Max Error: %f\n", diffArray.maxCoeff());
+    printf("Max Error: %f\n", (hostC - deviceCCopied).cwiseAbs().maxCoeff());
   }
 
   template <typename Function>
