@@ -25,7 +25,7 @@ else ()
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3")
 endif ()
 
-add_executable(gemm main.cu gemm_final.cu gemm_hide_smem_latency.cu gemm_transpose_smem.cu gemm_use_smem.cu gemm_use_tile.cu gemm_use_128.cu gemm_naive.cu)
+add_executable(gemm gemm.cu gemm_final.cu gemm_hide_smem_latency.cu gemm_transpose_smem.cu gemm_use_smem.cu gemm_use_tile.cu gemm_use_128.cu gemm_naive.cu)
 target_link_libraries(gemm ${CUDA_cublas_LIBRARY} OpenMP::OpenMP_CXX ${gflags_LIBRARIES})
 
 add_executable(first_attempt first_attempt.cu)
