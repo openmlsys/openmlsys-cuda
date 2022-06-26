@@ -1,0 +1,4 @@
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = git@github.com:NVIDIA/cutlass.git
+	shallow = true
