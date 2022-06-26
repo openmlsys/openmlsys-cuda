@@ -13,9 +13,9 @@ message("-- nvcc generates code for arch ${CUDA_ARCH_LIST}")
 SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 
 find_package(Eigen3 REQUIRED)
+find_package(gflags REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
-
-include_directories("third_party/argparse/include")
+include_directories(${gflags_INCLUDE_DIR})
 
 find_package(OpenMP)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --use_fast_math -Xcompiler -fopenmp")
@@ -27,7 +27,7 @@ endif ()
 
 
 add_executable(gemm main.cu gemm_final.cu gemm_hide_smem_latency.cu gemm_transpose_smem.cu gemm_use_smem.cu gemm_use_tile.cu gemm_use_128.cu gemm_naive.cu)
-target_link_libraries(gemm ${CUDA_cublas_LIBRARY} OpenMP::OpenMP_CXX)
+target_link_libraries(gemm ${CUDA_cublas_LIBRARY} OpenMP::OpenMP_CXX ${gflags_LIBRARIES})
 
 add_executable(first_attempt first_attempt.cu)
 target_link_libraries(first_attempt OpenMP::OpenMP_CXX)

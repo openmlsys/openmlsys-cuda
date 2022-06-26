@@ -3,8 +3,8 @@
 #include <omp.h>
 
 #include <Eigen/Core>
-#include <argparse/argparse.hpp>
 #include <ctime>
+#include <gflags/gflags.h>
 #include <iostream>
 #include <utility>
 
@@ -207,56 +207,25 @@ int getSPcores(cudaDeviceProp devProp) {
   return cores;
 }
 
+DEFINE_int32(cpu_procs, omp_get_num_procs(), "processor num used of CPU");
+DEFINE_int32(gpu_rank, 0, "the used GPU rank");
+DEFINE_int32(repeat_iterations, 10,
+             "repeat iteration numbers and average the result");
+DEFINE_double(alpha, 1., "alpha");
+DEFINE_double(beta, 1., "beta");
+DEFINE_uint32(M, {}, "M");
+DEFINE_uint32(N, {}, "N");
+DEFINE_uint32(K, {}, "K");
+
 int main(int argc, char *argv[]) {
-  argparse::ArgumentParser program("gemm");
+  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-  program.add_argument("--cpu_procs")
-      .help("processor num used of CPU")
-      .scan<'i', int>()
-      .default_value(omp_get_num_procs());
-
-  program.add_argument("--gpu_rank")
-      .help("the used GPU rank")
-      .scan<'i', int>()
-      .default_value(0);
-
-  program.add_argument("--repeat_iterations")
-      .help("repeat iteration numbers and average the result")
-      .scan<'i', int>()
-      .default_value(10);
-
-  program.add_argument("--alpha").scan<'g', float>();
-
-  program.add_argument("--beta").scan<'g', float>();
-
-  program.add_argument("-M").scan<'i', unsigned>();
-
-  program.add_argument("-N").scan<'i', unsigned>();
-
-  program.add_argument("-K").scan<'i', unsigned>();
-
-  try {
-    program.parse_args(argc, argv);
-  } catch (const std::runtime_error &err) {
-    std::cerr << err.what() << std::endl;
-    std::cerr << program;
-    std::exit(1);
-  }
-
-  const int cpu_procs = program.get<int>("--cpu_procs");
-  const int gpu_rank = program.get<int>("--gpu_rank");
-  const int repeat_iterations = program.get<int>("--repeat_iterations");
-  const auto alpha = program.get<float>("--alpha");
-  const auto beta = program.get<float>("--beta");
-  const auto M = program.get<unsigned>("-M");
-  const auto N = program.get<unsigned>("-N");
-  const auto K = program.get<unsigned>("-K");
-  printf("Program start with %d CPU processes on the %d-th GPU\n", cpu_procs,
-         gpu_rank);
-  omp_set_num_threads(cpu_procs);
+  printf("Program start with %d CPU processes on the %d-th GPU\n",
+         FLAGS_cpu_procs, FLAGS_gpu_rank);
+  omp_set_num_threads(FLAGS_cpu_procs);
   cudaDeviceProp deviceProp{};
-  cudaGetDeviceProperties(&deviceProp, gpu_rank);
-  cudaSetDevice(gpu_rank);
+  cudaGetDeviceProperties(&deviceProp, FLAGS_gpu_rank);
+  cudaSetDevice(FLAGS_gpu_rank);
   printf("GPU %s status: ", deviceProp.name);
   double boostFrequency = deviceProp.clockRate / 1e6;
   int fp32CoresNum = getSPcores(deviceProp);
@@ -264,9 +233,12 @@ int main(int argc, char *argv[]) {
   printf("clock rate %.3f GHz, FP32 cores num %d, FP32 peak throughput %.3f "
          "GFLOPS\n",
          boostFrequency, fp32CoresNum, peakPerformance);
-  printf("A: %d x %d, B: %d x %d, C: %d x %d\n", M, K, K, N, M, N);
+  printf("A: %d x %d, B: %d x %d, C: %d x %d\n", FLAGS_M, FLAGS_K, FLAGS_K,
+         FLAGS_N, FLAGS_M, FLAGS_N);
 
-  GemmTester tester{alpha, beta, M, N, K, repeat_iterations};
+  GemmTester tester{
+      (float)FLAGS_alpha,     (float)FLAGS_beta, FLAGS_M, FLAGS_N, FLAGS_K,
+      FLAGS_repeat_iterations};
   tester.evaluate(gemmCuBlas{}, "cuBlas");
   tester.evaluate(gemmNaive, "Naive");
   tester.evaluate(gemmUse128, "Use128");
@@ -276,5 +248,6 @@ int main(int argc, char *argv[]) {
   tester.evaluate(gemmHideSmemLatency, "HideSmemLatency");
   tester.evaluate(gemmFinal, "Final");
 
+  GFLAGS_NAMESPACE::ShutDownCommandLineFlags();
   return 0;
 }
