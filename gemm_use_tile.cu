@@ -44,7 +44,7 @@ __global__ void gemmKernel(const float *__restrict__ A,
       validLoadTileA[iterA] &= pA.validColOffset(k);
 #pragma unroll
       for (unsigned i = 0; i < ratio; ++i) {
-        fragmentA[i] = validLoadTileA[i] ? pA(i + iterA * intervalA, k) : 0;
+        fragmentA[i] = validLoadTileA[iterA] ? pA(i + iterA * intervalA, k) : 0;
       }
 #pragma unroll
       for (unsigned iterB = 0; iterB < iterationB; ++iterB) {
